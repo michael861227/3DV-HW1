@@ -5,10 +5,11 @@ from src.model import SingleViewto3D
 import src.losses as losses
 from src.losses import ChamferDistanceLoss
 import numpy as np
-
+import open3d as o3d
 import hydra
 from omegaconf import DictConfig
-
+import matplotlib.pyplot as plt
+import os
 
 cd_loss = ChamferDistanceLoss()
 
@@ -71,10 +72,27 @@ def evaluate_model(cfg: DictConfig):
         loss = calculate_loss(prediction_3d, ground_truth_3d, cfg).cpu().item()
 
         # TODO:
-        # if (step % cfg.vis_freq) == 0:
-        #     # visualization block
-        #     #  rend = 
-        #     plt.imsave(f'vis/{step}_{args.dtype}.png', rend)
+        if (step % cfg.vis_freq) == 0:
+            # visualization block
+            rend = prediction_3d[0].detach().cpu()
+            gt = ground_truth_3d[0].detach().cpu()
+            fig = plt.figure()
+
+            ax1 = fig.add_subplot(121, projection='3d')
+            ax2 = fig.add_subplot(122, projection='3d')
+            
+            if cfg.dtype == 'point':
+                ax1.scatter(rend[...,0], rend[...,1], rend[...,2], c = 'r', marker='.')
+                ax2.scatter(gt[...,0], gt[...,1], gt[...,2], c = 'b', marker='.')
+            
+            elif cfg.dtype == 'voxel':
+                rend = np.where(rend > 0.5, rend, 0)
+                ax1.voxels(rend, facecolors='red')    
+                ax2.voxels(gt, facecolors='blue')    
+            
+            os.makedirs(f'vis', exist_ok = True)
+            fig.savefig(f'vis/{step}_{cfg.dtype}.png')
+            # plt.imsave(f'vis/{step}_{cfg.dtype}.png', rend)
 
         total_time = time.time() - start_time
         iter_time = time.time() - iter_start_time

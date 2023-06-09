@@ -1,15 +1,19 @@
 import torch
+import torch.nn as nn
+from torch.nn.functional import pairwise_distance
+from pytorch3d.loss import chamfer_distance
 
 # define losses
-def voxel_loss(voxel_src,voxel_tgt):
-	# loss = 
-	# implement some loss for binary voxel grids
-	return prob_loss
+def voxel_loss(voxel_src, voxel_tgt):
+    loss = nn.BCELoss()
+    # implement some loss for binary voxel grids
+    prob_loss = loss(voxel_src, voxel_tgt.float())
+    return prob_loss
 
-def chamfer_loss(point_cloud_src,point_cloud_tgt):
-	# loss_chamfer = 
-	# implement chamfer loss from scratch
-	return loss_chamfer
+def chamfer_loss(point_cloud_src, point_cloud_tgt):
+    loss_chamfer, _ = chamfer_distance(point_cloud_tgt, point_cloud_src) 
+    # implement chamfer loss from scratch
+    return loss_chamfer
 
 # def smoothness_loss(mesh_src):
 # 	# loss = 

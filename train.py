@@ -4,9 +4,18 @@ from src.dataset import ShapeNetDB
 from src.model import SingleViewto3D
 import src.losses as losses
 from src.losses import ChamferDistanceLoss
-
 import hydra
 from omegaconf import DictConfig
+import wandb
+
+wandb.init(
+    project = '3DCV',
+    config = {
+        'lr': 0.0004,
+        'arch': 'resnet101',
+    },
+    name = 'Point_2048_3'
+)
 
 cd_loss = ChamferDistanceLoss()
 
@@ -14,7 +23,7 @@ def calculate_loss(predictions, ground_truth, cfg):
     if cfg.dtype == 'voxel':
         loss = losses.voxel_loss(predictions,ground_truth)
     elif cfg.dtype == 'point':
-        loss = cd_loss(predictions, ground_truth)
+        loss = losses.chamfer_loss(predictions, ground_truth)
     # elif cfg.dtype == 'mesh':
     #     sample_trg = sample_points_from_meshes(ground_truth, cfg.n_points)
     #     sample_pred = sample_points_from_meshes(predictions, cfg.n_points)
@@ -89,9 +98,11 @@ def train_model(cfg: DictConfig):
                 }, f'{cfg.base_dir}/checkpoint_{cfg.dtype}.pth')
 
         print("[%4d/%4d]; ttime: %.0f (%.2f, %.2f); loss: %.5f" % (step, cfg.max_iter, total_time, read_time, iter_time, loss_vis))
-
+        wandb.log({'loss': loss_vis})
+        
     print('Done!')
 
 
 if __name__ == '__main__':
     train_model()
+    wandb.finish()

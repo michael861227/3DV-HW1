@@ -4,8 +4,8 @@ import time
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
-# from pytorch3d.utils import ico_sphere
-# import pytorch3d
+from pytorch3d.utils import ico_sphere
+import pytorch3d
 
 class SingleViewto3D(nn.Module):
     def __init__(self, cfg):
@@ -14,16 +14,15 @@ class SingleViewto3D(nn.Module):
         vision_model = torchvision_models.__dict__[cfg.arch](pretrained=True)
         self.encoder = torch.nn.Sequential(*(list(vision_model.children())[:-1]))
         self.normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
-
+        self.latent_size = vision_model.fc.in_features
         # define decoder
         if cfg.dtype == "voxel":
-            pass
             # TODO:
-            # self.decoder =             
+            self.decoder = VoxelDecoder(voxel_size = 33, latent_size = self.latent_size)
         elif cfg.dtype == "point":
             self.n_point = cfg.n_points
             # TODO:
-            # self.decoder = PointDecoder(cfg.n_points, 512)
+            self.decoder = PointDecoder(cfg.n_points, latent_size = self.latent_size)
         # elif cfg.dtype == "mesh":
         #     # try different mesh initializations
         #     mesh_pred = ico_sphere(4,'cuda')
@@ -45,12 +44,12 @@ class SingleViewto3D(nn.Module):
         # call decoder
         if cfg.dtype == "voxel":
             # TODO:
-            # voxels_pred =             
+            voxels_pred = self.decoder(encoded_feat)   
             return voxels_pred
 
         elif cfg.dtype == "point":
             # TODO:
-            # pointclouds_pred = self.decoder(encoded_feat)
+            pointclouds_pred = self.decoder(encoded_feat)
             return pointclouds_pred
 
         # elif cfg.dtype == "mesh":
@@ -60,25 +59,48 @@ class SingleViewto3D(nn.Module):
         #     return  mesh_pred          
 
 
-# class PointDecoder(nn.Module):
-#     def __init__(self, num_points, latent_size):
-#         super(PointDecoder, self).__init__()
-#         self.num_points = num_points
-#         self.fc0 = nn.Linear(latent_size, 100)
-#         self.fc1 = nn.Linear(100, 128)
-#         self.fc2 = nn.Linear(128, 256)
-#         self.fc3 = nn.Linear(256, 512)
-#         self.fc4 = nn.Linear(512, 1024)
-#         self.fc5 = nn.Linear(1024, self.num_points * 3)
-#         self.th = nn.Tanh()
+class PointDecoder(nn.Module):
+    def __init__(self, num_points, latent_size):
+        super(PointDecoder, self).__init__()
+        self.num_points = num_points
+        self.fc0 = nn.Linear(latent_size, 100)
+        self.fc1 = nn.Linear(100, 128)
+        self.fc2 = nn.Linear(128, 256)
+        self.fc3 = nn.Linear(256, 512)
+        self.fc4 = nn.Linear(512, 1024)
+        self.fc5 = nn.Linear(1024, self.num_points * 3)
+        self.th = nn.Tanh()
 
-#     def forward(self, x):
-#         batchsize = x.size()[0]
-#         x = F.relu(self.fc0(x))
-#         x = F.relu(self.fc1(x))
-#         x = F.relu(self.fc2(x))
-#         x = F.relu(self.fc3(x))
-#         x = F.relu(self.fc4(x))
-#         x = self.th(self.fc5(x))
-#         x = x.view(batchsize, self.num_points, 3)
-#         return x
+    def forward(self, x):
+        batchsize = x.size()[0]
+        x = F.relu(self.fc0(x))
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = F.relu(self.fc4(x))
+        x = self.th(self.fc5(x))
+        x = x.view(batchsize, self.num_points, 3)
+        return x
+
+class VoxelDecoder(nn.Module):
+    def __init__(self, voxel_size, latent_size):
+        super(VoxelDecoder, self).__init__()
+        self.size = voxel_size 
+        self.fc0 = nn.Linear(latent_size, 100)
+        self.fc1 = nn.Linear(100, 128)
+        self.fc2 = nn.Linear(128, 256)
+        self.fc3 = nn.Linear(256, 512)
+        self.fc4 = nn.Linear(512, 1024)
+        self.fc5 = nn.Linear(1024, self.size ** 3)
+        self.sig = nn.Sigmoid()
+        
+    def forward(self, x):
+        batchsize = x.size()[0]
+        x = F.relu(self.fc0(x))
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = F.relu(self.fc4(x))
+        x = self.sig(self.fc5(x))
+        x = x.view(batchsize, self.size, self.size, self.size)
+        return x

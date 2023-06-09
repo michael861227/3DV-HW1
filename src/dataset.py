@@ -150,7 +150,7 @@ if __name__ == '__main__':
     from torch.utils.data import DataLoader
     # from pytorch3d.datasets import collate_batched_meshes
 
-    db = ShapeNetDB('/home/odie/3dv-hw/data/chair', 'point')
+    db = ShapeNetDB('/home/mcchou/3DCV/data/chair', 'voxel')
     dataloader = DataLoader(db, batch_size=10, shuffle=True)
 
     for img, point, object_id in dataloader:
