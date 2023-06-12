@@ -11,8 +11,18 @@ def voxel_loss(voxel_src, voxel_tgt):
     return prob_loss
 
 def chamfer_loss(point_cloud_src, point_cloud_tgt):
-    loss_chamfer, _ = chamfer_distance(point_cloud_tgt, point_cloud_src) 
+    # loss_chamfer, _ = chamfer_distance(point_cloud_tgt, point_cloud_src) 
+    
     # implement chamfer loss from scratch
+    dist_matrix = torch.cdist(point_cloud_src, point_cloud_tgt)  # 計算距離矩陣
+
+    chamfer_dist_A = torch.min(dist_matrix ** 2, dim=2)[0]  
+    chamfer_dist_B = torch.min(dist_matrix ** 2, dim=1)[0]  
+
+    chamfer_loss = torch.mean(chamfer_dist_A, dim=1) + torch.mean(chamfer_dist_B, dim=1) 
+
+    loss_chamfer = chamfer_loss.mean()
+
     return loss_chamfer
 
 # def smoothness_loss(mesh_src):
